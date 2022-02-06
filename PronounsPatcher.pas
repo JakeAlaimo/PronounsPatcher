@@ -318,6 +318,11 @@ begin
     result := ElementBySignature(currentCondition, 'CTDA');
 end;
 
+function GetConditionDataFromCondition(condition : IwbElement) : IwbElement;
+begin
+    result := ElementBySignature(condition, 'CTDA');
+end;
+
 function IsConditionOR(conditionData : IwbElement) : boolean;
 var
     currentComparisonType : integer;
@@ -332,6 +337,14 @@ var
 begin
     currentConditionFunction := GetEditValue(ElementByIndex(conditionData, ConditionFunction));
     result := ((currentConditionFunction = 'GetIsSex') or (currentConditionFunction = 'GetPCIsSex'));
+end;
+
+function IsConditionGetPCIsSexOperation(conditionData : IwbElement) : boolean;
+var
+    currentConditionFunction : string;
+begin
+    currentConditionFunction := GetEditValue(ElementByIndex(conditionData, ConditionFunction));
+    result := (currentConditionFunction = 'GetPCIsSex');
 end;
 
 function IsConditionRequiredGetSexOperation(currentConditionAttributes : integer; prevConditionAttributes : integer) : boolean;
@@ -423,14 +436,23 @@ end;
 
 procedure PatchRequiredGetSexCondition(conditions : IwbElement; conditionIndex : integer);
 var
-    currentCondition: IwbElement;
+    currentCondition, currentConditionData: IwbElement;
 begin
     currentCondition := ElementByIndex(conditions, conditionIndex);
+    currentConditionData := GetConditionDataFromCondition(currentCondition);
 
     InsertIsTheyThemActiveORCondition(conditions, currentCondition);
     InsertDuplicateGetSexANDCondition(conditions, currentCondition);
-    InsertIsPlayerORCondition(conditions, currentCondition);
-    InsertDuplicateGetSexANDCondition(conditions, currentCondition);
+
+    // We MUST patch in conditions to ensure our modifications only take place on GetSex operations concerned with the player
+    // GetIsSex runs on the target, and so the target should have GetIsID called on them to ensure they are the player
+    // GetPCIsSex always runs on the player and is actively *not* guaranteed to run on the target, thus expecting the target to be the player could lead to issues
+    if (IsConditionGetPCIsSexOperation(currentConditionData) = false) then
+    begin
+        InsertIsPlayerORCondition(conditions, currentCondition);
+        InsertDuplicateGetSexANDCondition(conditions, currentCondition);
+    end;
+
     InsertGlobalFallbackORCondition(conditions, currentCondition);
 end;
 
@@ -447,7 +469,6 @@ begin
     SetConditionComparisonType(conditionData, '1');
     SetConditionComparisonValue(conditionData, '2');
     SetConditionOR(conditionData);
-
 end;
 
 procedure InsertIsPlayerORCondition(conditions : IwbGroupRecord; condition : IwbElement);
