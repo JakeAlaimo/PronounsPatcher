@@ -189,9 +189,6 @@ procedure PatchDialogueElement(dialElement : IwbElement);
 var
     allPossibleLinesUnderElement : IwbGroupRecord;
 begin
-    if IsWinningOverride(dialElement) = false then
-        exit;
-
     allPossibleLinesUnderElement := ChildGroup(dialElement);
     PatchFallbackIntoDeadlockableGroup(allPossibleLinesUnderElement);
 end;
@@ -402,8 +399,13 @@ var
 begin
     for i:= 0 to ElementCount(elementGroup) - 1 do
     begin
-        element := CopyElementOverrideIntoPatch(ElementByIndex(elementGroup, i));
-        PatchRequiredGetSexConditionsInElement(element, Integer(requiredGetSexBitfields[i]));
+        element := ElementByIndex(elementGroup, i);
+
+        if (IsWinningOverride(element) = true) then
+        begin
+            element := CopyElementOverrideIntoPatch(element);
+            PatchRequiredGetSexConditionsInElement(element, Integer(requiredGetSexBitfields[i]));
+        end;
     end;
 end;
 
